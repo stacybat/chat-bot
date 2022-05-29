@@ -3,12 +3,29 @@ import re
 import numpy as np
 import random
 
+
 def help():
-    print("\nСписок команд")
-    print("r - simple;")
-    print("s - stress;")
+    text = '''\nСписок команд:
+            /r - simple
+            /s - stress
+            +/-N - modifier value
+            /N - number of botchs
+            N - number of rolls
+            where N - is a number
+            Commands are separated by spaces'''
+    return text
 
+# Функция симпл броска
+def simple_dice(num, mod):
+    rolls = []
+    
+    for i in range(num):
+        roll = random.randrange(1,11) + mod
+        rolls.append('Result (mod = ' + str(mod) + '): ' + str(roll + mod) + '  Roll: ' + str(roll))
+    
+    return rolls
 
+# Функция переброса 1 при стрессовом броске
 def stress_1(rolls_stress_1):
     roll = random.randrange(0,10)
     rolls_stress_1.append(roll)
@@ -28,17 +45,7 @@ def stress_1(rolls_stress_1):
     
     return result, rolls_stress_1
 
-
-def simple_dice(num, mod):
-    rolls = []
-    
-    for i in range(num):
-        roll = random.randrange(1,11) + mod
-        rolls.append('Result (mod = ' + str(mod) + '): ' + str(roll + mod) + '  Roll: ' + str(roll))
-    
-    return rolls
-
-
+# Функция ботч броска
 def botch_dice(botch_num):
     botch_result = 0
     botch_rolls = []
@@ -50,15 +57,19 @@ def botch_dice(botch_num):
     
     return botch_result, botch_rolls
 
-
+# Функция стрессового броска
 def stress_dice(num, mod, botch):
+    # Объявляем переменную stress_results, которая содержит все результаты стрессового броска
     stress_results = [["" for j in range(3)] for i in range(num)]
     all_results = []  
+
+    # Делаем в цикле стрессовые броски, num - количество брошенных кубов
     for i in range(num):
         rolls = []
         botch_result = 0
         roll = random.randrange(0,10)
-        
+
+        # Определяем есть ли ботчи и взрывы
         if roll == 0:
             botch_result, botch_rolls = botch_dice(botch)
             rolls.append(roll)
@@ -67,10 +78,11 @@ def stress_dice(num, mod, botch):
             result_stress, rolls = stress_1(rolls)
         else:
             rolls.append(roll)
+
+        # Оформляем результат и добавляем если надо модификатор
         if roll == 0 and botch_result == 0:
             result = roll + mod
             stress_results[i][2] = 'No Botch'
-
         elif roll == 0 and botch_result == 1:
             result = 0
             stress_results[i][2] = '1 Botch' + ' Botch roll: ' + str(botch_rolls)
@@ -85,25 +97,24 @@ def stress_dice(num, mod, botch):
             stress_results[i][2] = ''
         stress_results[i][0] = 'Result (mod = ' + str(mod) + '): ' + str(result)
         stress_results[i][1] = 'Rolls: ' + str(rolls)
-        #all_results = all_results + stress_results[i][0] + '  ' + stress_results[i][1] + '  ' + stress_results[i][2] + '\n'
         all_results.append(stress_results[i][0] + '  ' + stress_results[i][1] + '  ' + stress_results[i][2])       
     
     return all_results
 
+# Функция в которой кидается либо стресс куб либо симпл куб
 
 def dice(request):
     request=request.lower()
     print(request)
 
-    # разберем фразу на слова
+    # разобьем команду пробелами на части
     command = request.split()
-    #comm = []
-    #phrase=""
+    # Изначально присвоим переменным тип куба значение симпл (r), количество бросаемых кубов 1, количество ботч кубов в случае стрессового броска 1, модификатор 0
     dice_type = 'r'
     dice_num = 1
     dice_botch = 1
     modificator = 0
-
+    # Присвоим переменным значение из введенной команды
     for n in command:
         #comm.append(n)
         #print(type(n))
@@ -117,14 +128,11 @@ def dice(request):
             modificator = modificator + int(n)
         else:
             continue
-    print(dice_botch)        
+    # Запускаем функцию либо симпл броска либо стресс броска     
     if dice_type == 'r':
         result = simple_dice(dice_num, modificator)
-        #print (result)
     else:
-        #print(dice_num, modificator, dice_botch)
         result = stress_dice(dice_num, modificator, dice_botch)
-        #print (*result, sep='\n')
     
     return result
 
@@ -132,15 +140,20 @@ def dice(request):
 
 import telebot
 
-#telebot.apihelper.ENABLE_MIDDLEWARE = True
-
 # Укажем token полученный при регистрации бота
 bot = telebot.TeleBot("***")
 
 # Начнем обработку. Если пользователь запустил бота, ответим 
 @bot.message_handler(commands=['start'])
 def start_message(message):
-    bot.send_message(message.from_user.id, "Greetings! This is a dice bot for Ars Magic")
+    bot.send_message(message.from_user.id, "Greetings! This is a dice bot for Ars Magica")
+  
+@bot.message_handler(commands=['help'])
+def help_message(message):
+    bot.send_message(message.from_user.id, help())
+
+
+
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
@@ -151,10 +164,10 @@ def get_text_messages(message):
         bot_answer = dice(request)
         for r in bot_answer:     
             print(r)
+            #Отправляем результаты бросков построчно
             bot.send_message(message.from_user.id, r)
-        # выведем текст ответа
 
-        # отправим ответ
+
     
 # Запустим обработку событий бота
 bot.infinity_polling(none_stop=True, interval=1)
